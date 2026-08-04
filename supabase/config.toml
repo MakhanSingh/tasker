@@ -1,0 +1,19 @@
+project_id = "tasker"
+
+[db]
+port = 54322
+
+[api]
+port = 54321
+
+[studio]
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
+
+[auth.email]
+enable_signup = false
+enable_confirmations = false

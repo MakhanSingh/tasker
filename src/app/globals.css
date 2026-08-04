@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Tasker design tokens — Todoist-style. Documented in STYLEGUIDE.md.
+   Every component styles itself with these named utilities (text-ink,
+   bg-primary, border-border, …); raw hex values and Tailwind's slate scale
+   are not used in components. Change a token here, the whole app follows.
+   --------------------------------------------------------------------------- */
+@theme {
+  /* Brand red */
+  --color-primary: #dc4c3e; /* buttons, add-task accents */
+  --color-primary-hover: #c53727;
+  --color-accent: #d1453b; /* active nav text, red links, overdue dates */
+  --color-selected: #ffefe5; /* peach bg of the active nav item */
+
+  /* Ink (text) scale */
+  --color-ink: #202020; /* primary text */
+  --color-ink-secondary: #666666; /* labels, section headers */
+  --color-ink-muted: #808080; /* meta text, descriptions */
+  --color-ink-faint: #9c9c9c; /* placeholders, counts, disabled */
+  --color-checkbox: #b3b3b3; /* circle-checkbox border */
+
+  /* Surfaces & borders */
+  --color-sidebar: #fcfaf8; /* warm off-white: sidebar, board columns */
+  --color-hover: #f2efed; /* nav/ghost hover */
+  --color-hover-soft: #faf8f6; /* row hover on white */
+  --color-border: #e6e6e6; /* inputs, cards, dialogs */
+  --color-border-soft: #f0f0f0; /* list-row separators */
+  --color-focus: #d9d9d9; /* focus rings */
+
+  /* Fixed accents */
+  --color-project: #2e7d8c; /* the # in front of project names */
+  --color-avatar: #0f766e; /* user-initials circle */
+
+  /* Semantic states — used by badges, the running timer and form messages */
+  --color-success: #2f7a34;
+  --color-success-bg: #eef7ed;
+  --color-success-border: #b6dcb8;
+  --color-warning: #a8730f;
+  --color-warning-bg: #fdf3e3;
+  --color-warning-border: #e8cf9a;
+  --color-danger: #d1453b;
+  --color-danger-bg: #fdeceb;
+  --color-info: #3a5bbf;
+  --color-info-bg: #eef2fb;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #202020;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  /* The same system stack Todoist ships — deliberately not a webfont, so
+     text renders like the native Todoist app on every platform. */
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif;
+}
