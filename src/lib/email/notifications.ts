@@ -1,8 +1,9 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "./sendEmail";
+import { getAppUrl } from "@/lib/appUrl";
 
-const appUrl = () => process.env.APP_URL ?? "http://localhost:3000";
+const appUrl = getAppUrl;
 
 export async function notifyTaskAssigned(params: { taskId: string; assigneeId: string; taskTitle: string; projectId: string }) {
   // Service-role read: the actor assigning a task may have no RLS visibility

@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
+import { getAppUrl } from "@/lib/appUrl";
 
 /**
  * Invite tokens.
@@ -27,7 +28,6 @@ export function hashInviteToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export function inviteUrl(token: string) {
-  const base = process.env.APP_URL ?? "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/invite/${token}`;
+export async function inviteUrl(token: string) {
+  return `${await getAppUrl()}/invite/${token}`;
 }

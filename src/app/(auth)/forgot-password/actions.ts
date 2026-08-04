@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAppUrl } from "@/lib/appUrl";
 import { z } from "zod";
 
 export type ForgotPasswordState = {
@@ -37,10 +38,10 @@ export async function requestPasswordReset(
   }
 
   const supabase = await createClient();
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const appUrl = await getAppUrl();
 
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email.trim().toLowerCase(), {
-    redirectTo: `${appUrl.replace(/\/$/, "")}/auth/callback?next=/reset-password`,
+    redirectTo: `${appUrl}/auth/callback?next=/reset-password`,
   });
 
   // Rate limits and outages are worth reporting — they mean "try later",

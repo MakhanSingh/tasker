@@ -72,7 +72,7 @@ export async function createInviteLink(
   if (error) return { error: error.message };
 
   revalidatePath(`/projects/${projectId}/members`);
-  return { error: null, url: inviteUrl(token) };
+  return { error: null, url: await inviteUrl(token) };
 }
 
 /** Kills a link immediately, whether or not it has been used. */

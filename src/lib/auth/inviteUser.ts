@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAppUrl } from "@/lib/appUrl";
 import type { ProfileRole } from "@/types/database.types";
 
 export class InviteUserError extends Error {}
@@ -23,7 +24,7 @@ export async function inviteUser(params: {
   const admin = createAdminClient();
 
   const { data: created, error: createError } = await admin.auth.admin.inviteUserByEmail(params.email, {
-    redirectTo: `${process.env.APP_URL ?? "http://localhost:3000"}/login`,
+    redirectTo: `${await getAppUrl()}/login`,
   });
 
   if (createError || !created.user) {
