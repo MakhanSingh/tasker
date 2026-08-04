@@ -52,10 +52,23 @@ export async function updateSession(request: NextRequest) {
   response = NextResponse.next({ request });
 
   const path = request.nextUrl.pathname;
-  // /invite is deliberately public: a shared link has to work for someone who
-  // has no account yet, which is the whole reason it exists. The token is what
-  // authorizes them, and it is checked server-side.
-  const isAuthRoute = path.startsWith("/login") || path.startsWith("/invite");
+  // Public by design, each for its own reason:
+  //
+  //   /invite         a shared link has to work for someone with no account yet
+  //   /forgot-password  asking for a reset is the one thing you can do when
+  //                     you can't sign in
+  //   /auth/callback  where an emailed link lands, before there is a session —
+  //                   exchanging the code is what creates one
+  //
+  // /reset-password is deliberately NOT here. By the time anyone reaches it,
+  // /auth/callback has turned their emailed code into a session, so the normal
+  // gate is exactly right: no session means no valid link, and they belong on
+  // /login rather than at a form that would fail.
+  const isAuthRoute =
+    path.startsWith("/login") ||
+    path.startsWith("/invite") ||
+    path.startsWith("/forgot-password") ||
+    path.startsWith("/auth/callback");
 
   if (!user && !isAuthRoute) {
     // An API caller gets an answer it can parse. Redirecting one to /login
@@ -71,7 +84,9 @@ export async function updateSession(request: NextRequest) {
 
   // Someone already signed in who opens an invite link should land on the
   // invite, not be bounced home before they can accept it.
-  if (user && isAuthRoute && !path.startsWith("/invite")) {
+  // …but not an invite or a callback: both have work left to do that a
+  // redirect home would throw away.
+  if (user && isAuthRoute && !path.startsWith("/invite") && !path.startsWith("/auth/callback")) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/";
     return NextResponse.redirect(homeUrl);
