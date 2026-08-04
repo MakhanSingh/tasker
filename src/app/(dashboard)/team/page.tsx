@@ -3,10 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { InviteTeamMemberDialog } from "@/components/team/InviteTeamMemberDialog";
-import { MemberActiveToggle } from "@/components/team/MemberActiveToggle";
+import { MemberActions } from "@/components/team/MemberActions";
 
 export default async function TeamPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const supabase = await createClient();
   const { data: members } = await supabase
     .from("profiles")
@@ -48,7 +48,12 @@ export default async function TeamPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <MemberActiveToggle profileId={member.id} isActive={member.is_active} />
+                      <MemberActions
+                        profileId={member.id}
+                        fullName={member.full_name}
+                        isActive={member.is_active}
+                        isSelf={member.id === admin.id}
+                      />
                     </td>
                   </tr>
                 ))}
