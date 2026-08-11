@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAppUrl } from "@/lib/appUrl";
-import { inviteMemberSchema, updateMemberSchema } from "@/lib/validations/team";
+import { createMemberSchema, inviteMemberSchema, updateMemberSchema } from "@/lib/validations/team";
 import { inviteUser, InviteUserError } from "@/lib/auth/inviteUser";
+import { generatePassword } from "@/lib/auth/generatePassword";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fieldErrorsFrom } from "@/components/ui/field-error";
 
@@ -14,6 +15,14 @@ export type FormState = {
   success?: boolean;
   /** Per-field messages, keyed by input name, for showing them in place. */
   fieldErrors?: Record<string, string>;
+};
+
+export type CreateMemberState = FormState & {
+  /**
+   * Returned exactly once, for the admin to read off the screen and hand over.
+   * Never written to the database, a log line, or an email.
+   */
+  credentials?: { email: string; password: string };
 };
 
 export async function inviteTeamMember(_prevState: FormState, formData: FormData): Promise<FormState> {
@@ -42,6 +51,85 @@ export async function inviteTeamMember(_prevState: FormState, formData: FormData
 
   revalidatePath("/team");
   return { error: null, success: true };
+}
+
+/**
+ * Creates a working account there and then, instead of inviting.
+ *
+ * The invite route depends on an email arriving and being acted on. That is
+ * the right default, but it fails in the two situations this is for: the
+ * address is inside a company that eats our mail, or the person is on a call
+ * right now and wants in before it ends. Here the account exists the moment
+ * the dialog closes, and the admin reads the password out.
+ *
+ * The password is generated rather than typed. An admin inventing one under
+ * time pressure picks something they have used before, and it is the only
+ * credential on the account. It goes back to the browser once, in the action's
+ * return value, and is never stored, logged or emailed — closing the dialog is
+ * what makes it unrecoverable, at which point the reset link in Edit is the
+ * way back.
+ *
+ * `email_confirm: true` because we are asserting the address on the admin's
+ * behalf. Without it Supabase holds the account unconfirmed pending a click on
+ * a mail that, in a deployment with EMAIL_PROVIDER=console, is never sent — an
+ * account created for immediate use that cannot be used.
+ */
+export async function createTeamMember(
+  _prevState: CreateMemberState,
+  formData: FormData,
+): Promise<CreateMemberState> {
+  const admin = await requireAdmin();
+  const parsed = createMemberSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+      fieldErrors: fieldErrorsFrom(parsed.error.issues),
+    };
+  }
+
+  const password = generatePassword();
+  // Service role for both writes, as inviteUser does: creating an auth.users
+  // row has no session-scoped equivalent, and the rollback below needs the
+  // same client. requireAdmin above is the gate.
+  const service = createAdminClient();
+
+  const { data: created, error: createError } = await service.auth.admin.createUser({
+    email: parsed.data.email,
+    password,
+    email_confirm: true,
+  });
+
+  if (createError || !created?.user) {
+    const message = createError?.message ?? "Couldn't create that account.";
+    // A taken address is the one failure an admin can act on, and it belongs
+    // on the field rather than in the footer of the form.
+    return /already|exists|registered/i.test(message)
+      ? { error: message, fieldErrors: { email: "That address already has an account." } }
+      : { error: message };
+  }
+
+  const { error: profileError } = await service.from("profiles").insert({
+    id: created.user.id,
+    org_id: admin.org_id,
+    role: parsed.data.role,
+    full_name: parsed.data.full_name,
+    email: parsed.data.email,
+    client_id: null,
+  });
+
+  if (profileError) {
+    // Same rollback as inviteUser: a login with no profile behind it can sign
+    // in and land nowhere.
+    await service.auth.admin.deleteUser(created.user.id);
+    return { error: profileError.message };
+  }
+
+  revalidatePath("/team");
+  return {
+    error: null,
+    success: true,
+    credentials: { email: parsed.data.email, password },
+  };
 }
 
 /**
