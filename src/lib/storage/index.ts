@@ -15,6 +15,21 @@ export interface FileStorage {
   deleteFile(path: string): Promise<void>;
 }
 
+/**
+ * The metadata row survived but the bytes did not.
+ *
+ * Its own type because the download route has to answer it with a 404 before
+ * the response opens. Left to surface mid-stream it reaches the browser as a
+ * dropped connection — a 503 from whatever proxy is in front, which reads as
+ * "the site is down" rather than "that one file is gone".
+ */
+export class FileNotFoundError extends Error {
+  constructor(readonly storagePath: string) {
+    super(`No file at ${storagePath}`);
+    this.name = "FileNotFoundError";
+  }
+}
+
 let cached: FileStorage | null = null;
 
 // Provider is chosen once from STORAGE_PROVIDER. Adding Supabase Storage or

@@ -1,10 +1,10 @@
 import "server-only";
-import { createReadStream } from "node:fs";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { createReadStream, constants } from "node:fs";
+import { access, mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
-import type { FileStorage, UploadParams } from "./index";
+import { FileNotFoundError, type FileStorage, type UploadParams } from "./index";
 
 // Only safe because the deployment target is a persistent VPS (Hostinger).
 // On a serverless/ephemeral host, uploads would vanish on redeploy or
@@ -40,7 +40,19 @@ export class LocalFileStorage implements FileStorage {
   }
 
   async getFileStream(relativePath: string): Promise<Readable> {
-    return createReadStream(this.absolute(relativePath));
+    const absolutePath = this.absolute(relativePath);
+
+    // createReadStream does not throw for a missing path — it hands back a
+    // stream and emits ENOENT afterwards, by which point the route has already
+    // opened a 200 and the only thing left to do is drop the connection. Ask
+    // first, so a missing file can still be answered with a status code.
+    try {
+      await access(absolutePath, constants.R_OK);
+    } catch {
+      throw new FileNotFoundError(relativePath);
+    }
+
+    return createReadStream(absolutePath);
   }
 
   async deleteFile(relativePath: string) {
