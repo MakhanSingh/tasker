@@ -1,11 +1,15 @@
 import "server-only";
 import type { Readable } from "node:stream";
+import type { StorageProvider } from "@/types/database.types";
 import { LocalFileStorage } from "./local";
+import { SupabaseFileStorage } from "./supabase";
 
 export interface UploadParams {
   orgId: string;
   projectId: string;
   fileName: string;
+  /** Recorded by providers that store it alongside the object. */
+  contentType?: string;
   body: Buffer;
 }
 
@@ -30,22 +34,43 @@ export class FileNotFoundError extends Error {
   }
 }
 
-let cached: FileStorage | null = null;
+const cache = new Map<StorageProvider, FileStorage>();
 
-// Provider is chosen once from STORAGE_PROVIDER. Adding Supabase Storage or
-// S3 later means implementing FileStorage and adding a case here — no
-// calling code changes anywhere else in the app.
-export function getFileStorage(): FileStorage {
-  if (cached) return cached;
-
+/**
+ * Where new uploads go. Everything already stored keeps its own provider —
+ * see getFileStorage.
+ */
+export function defaultStorageProvider(): StorageProvider {
   const provider = process.env.STORAGE_PROVIDER ?? "local";
-  switch (provider) {
-    case "local":
-      cached = new LocalFileStorage();
-      return cached;
-    default:
-      throw new Error(`Unsupported STORAGE_PROVIDER: ${provider}`);
+  if (provider !== "local" && provider !== "supabase") {
+    throw new Error(`Unsupported STORAGE_PROVIDER: ${provider}`);
   }
+  return provider;
+}
+
+/**
+ * Reads take the provider from the row being read, not from the environment.
+ *
+ * Switching STORAGE_PROVIDER decides where the *next* upload lands; it says
+ * nothing about the thousand files already on disk. Keying off the row means
+ * old and new can coexist indefinitely and nothing has to be migrated in one
+ * go — files.storage_provider has recorded this since the first migration.
+ */
+export function getFileStorage(provider: StorageProvider = defaultStorageProvider()): FileStorage {
+  const existing = cache.get(provider);
+  if (existing) return existing;
+
+  const storage =
+    provider === "supabase"
+      ? new SupabaseFileStorage()
+      : provider === "local"
+        ? new LocalFileStorage()
+        : null;
+
+  if (!storage) throw new Error(`Unsupported storage provider: ${provider}`);
+
+  cache.set(provider, storage);
+  return storage;
 }
 
 // Downloads always go through an authenticated app route rather than a

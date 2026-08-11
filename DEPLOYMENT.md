@@ -10,10 +10,15 @@ That rules out shared/web hosting, whatever the PHP-shaped control panel
 suggests. On Hostinger it means a **VPS**, or a plan that gives you real
 Node.js hosting with SSH.
 
-It also needs a **persistent disk**. `STORAGE_PROVIDER=local` writes uploaded
-files to the filesystem. On anything that resets between deploys — serverless,
-ephemeral containers — every file a client attached disappears the next time
-you ship.
+It does **not** need a persistent disk, as long as you leave
+`STORAGE_PROVIDER=supabase`. Attachments then live in a private Supabase
+Storage bucket and survive deploys, redeploys and a rebuilt server.
+
+`STORAGE_PROVIDER=local` writes uploads to the filesystem instead, and then a
+persistent disk does matter. On anything that resets between deploys —
+serverless, ephemeral containers, most managed Node hosting — every file a
+client attached disappears the next time you ship. This has already happened
+once on this project; local is for development.
 
 ---
 
@@ -35,12 +40,16 @@ cd /var/www/tasker
 npm ci
 ```
 
-## 3. Uploads live outside the checkout
+## 3. Uploads
 
-This one matters more than it looks. `STORAGE_ROOT` defaults to `./storage`,
-which is *inside* the repo — fine on a laptop, wrong on a server, where a
-`git pull` or a fresh clone sits on top of it. Put it somewhere deploys never
-touch:
+With `STORAGE_PROVIDER=supabase` there is nothing to do here beyond running
+migration 0030, which creates the private `attachments` bucket. Files live in
+Supabase, not on this machine, so no directory needs protecting from deploys.
+
+Only if you deliberately choose `STORAGE_PROVIDER=local`: `STORAGE_ROOT`
+defaults to `./storage`, *inside* the repo, where a `git pull` or a fresh clone
+sits on top of it. Point it somewhere deploys never touch, and make sure that
+path is a real persistent disk:
 
 ```bash
 sudo mkdir -p /var/lib/tasker/storage
@@ -60,7 +69,7 @@ What must differ from your laptop:
 | --- | --- | --- |
 | `PREVIEW_MODE` | `false` | Otherwise the whole site serves fixtures |
 | `APP_URL` | `https://your-domain.com` | Invite links, invoice links and emails are built from it. Left as localhost, every invite you send points at the recipient's own machine |
-| `STORAGE_ROOT` | `/var/lib/tasker/storage` | See above |
+| `STORAGE_PROVIDER` | `supabase` | Attachments survive deploys. `local` only with a persistent disk — see above |
 | `NEXT_PUBLIC_SUPABASE_URL` | same as local | |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same as local | |
 | `SUPABASE_SERVICE_ROLE_KEY` | same as local | Never in git. Only ever in this file, `chmod 600` |

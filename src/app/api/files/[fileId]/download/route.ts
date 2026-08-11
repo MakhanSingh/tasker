@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fil
   // is_client_visible), so no separate permission check is needed.
   const { data: file } = await supabase
     .from("files")
-    .select("file_name, storage_path, mime_type")
+    .select("file_name, storage_path, mime_type, storage_provider")
     .eq("id", fileId)
     .single();
 
@@ -22,7 +22,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fil
 
   let stream: Readable;
   try {
-    stream = (await getFileStorage().getFileStream(file.storage_path)) as Readable;
+    // The row's own provider, not the environment's: a file written to disk
+    // before the move to Supabase Storage still has to be readable after it.
+    const storage = getFileStorage(file.storage_provider);
+    stream = (await storage.getFileStream(file.storage_path)) as Readable;
   } catch (err) {
     if (err instanceof FileNotFoundError) {
       // Reaching here means the row is readable but its bytes are not on
