@@ -54,6 +54,19 @@ $$;
 create or replace function auth.email() returns text language sql stable as $$
   select nullif(current_setting('request.jwt.claim.email', true), '');
 $$;
+
+-- Just enough of storage for 0030 to register its bucket. The real table has
+-- a dozen more columns; only the three the migration names are needed for it
+-- to apply, and nothing here should be read as a description of Supabase's
+-- actual schema.
+create schema if not exists storage;
+
+create table if not exists storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean not null default false,
+  created_at timestamptz default now()
+);
 `;
 
 // Objects the app reads or writes by name. If a migration is renamed, split or

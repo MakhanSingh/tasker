@@ -92,8 +92,20 @@ if (preview === "true") {
   bad(`PREVIEW_MODE should be "true" or "false"`);
 }
 
-if (env.STORAGE_PROVIDER === "local") {
+const storage = env.STORAGE_PROVIDER ?? "local";
+if (storage === "local") {
+  const root = env.STORAGE_ROOT ?? "./storage";
   console.log("· STORAGE_PROVIDER=local — needs a host with a persistent disk (a VPS). On serverless, uploads vanish between requests.");
+  // The default puts uploads inside the checkout, so the next deploy replaces
+  // them. Silent until someone opens a task and finds the attachment gone,
+  // which is exactly the failure this line exists to get ahead of.
+  if (root.startsWith("./") || root.startsWith("storage")) {
+    bad(`STORAGE_ROOT=${root} is inside the checkout — a deploy will replace it and take every attachment with it. Use an absolute path on a persistent disk, or STORAGE_PROVIDER=supabase.`);
+  }
+} else if (storage === "supabase") {
+  console.log(`· STORAGE_PROVIDER=supabase — attachments live in the "${env.STORAGE_BUCKET ?? "attachments"}" bucket and survive deploys. Migration 0030 must have run.`);
+} else {
+  bad(`STORAGE_PROVIDER should be "supabase" or "local", not "${storage}"`);
 }
 if ((env.EMAIL_PROVIDER ?? "console") === "console") {
   console.log("· EMAIL_PROVIDER=console — mail is printed to the server log, not sent.");

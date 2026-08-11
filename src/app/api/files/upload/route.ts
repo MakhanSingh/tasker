@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth/getCurrentProfile";
 import { getProjectRole } from "@/lib/auth/getProjectRole";
-import { getFileStorage } from "@/lib/storage";
+import { defaultStorageProvider, getFileStorage } from "@/lib/storage";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const CAN_UPLOAD_PROJECT_FILES = ["admin", "manager", "editor"];
@@ -59,12 +59,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "You don't have permission to upload to this project" }, { status: 403 });
   }
 
-  const storage = getFileStorage();
+  // Recorded on the row, so a later change of STORAGE_PROVIDER doesn't strand
+  // everything written before it.
+  const provider = defaultStorageProvider();
+  const storage = getFileStorage(provider);
   const buffer = Buffer.from(await file.arrayBuffer());
   const { path: storagePath } = await storage.uploadFile({
     orgId: profile.org_id,
     projectId,
     fileName: file.name,
+    contentType: file.type || undefined,
     body: buffer,
   });
 
@@ -80,7 +84,7 @@ export async function POST(request: Request) {
       storage_path: storagePath,
       mime_type: file.type || null,
       size_bytes: file.size,
-      storage_provider: "local",
+      storage_provider: provider,
       is_client_visible: visible,
     })
     .select("id")
