@@ -6,6 +6,13 @@ export const inviteMemberSchema = z.object({
   role: z.enum(["admin", "member"]),
 });
 
+export const updateMemberSchema = z.object({
+  profile_id: z.uuid(),
+  full_name: z.string().trim().min(1, "Name is required"),
+  email: z.email("Enter a valid email"),
+  role: z.enum(["admin", "member"]),
+});
+
 export const projectRoleSchema = z.enum(["manager", "editor", "viewer", "client"]);
 
 export const projectMemberSchema = z.object({

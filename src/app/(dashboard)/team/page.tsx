@@ -51,6 +51,8 @@ export default async function TeamPage() {
                       <MemberActions
                         profileId={member.id}
                         fullName={member.full_name}
+                        email={member.email}
+                        role={member.role === "admin" ? "admin" : "member"}
                         isActive={member.is_active}
                         isSelf={member.id === admin.id}
                       />

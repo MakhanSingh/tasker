@@ -3,25 +3,32 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { deleteTeamMember, setMemberActive } from "@/app/(dashboard)/team/actions";
 
 /**
- * Disable, and — for an account nobody ever worked as — remove.
+ * Edit, disable, and — for an account nobody ever worked as — remove.
  *
  * Disable stays the wide button because it is nearly always the right one: it
  * revokes access at once and leaves their hours on the invoices they were
  * billed on. Remove is the quiet one, for the invite sent to a mistyped
  * address, and the database refuses it for anyone who has actually done
- * something, saying what they have.
+ * something, saying what they have. Editing is offered on your own row too —
+ * correcting your own name or address is not the kind of self-change that can
+ * lock you out, unlike disabling or demoting yourself.
  */
 export function MemberActions({
   profileId,
   fullName,
+  email,
+  role,
   isActive,
   isSelf,
 }: {
   profileId: string;
   fullName: string;
+  email: string;
+  role: "admin" | "member";
   isActive: boolean;
   /** You can neither disable nor delete your own account. */
   isSelf: boolean;
@@ -41,8 +48,23 @@ export function MemberActions({
       }
     });
 
+  const edit = (
+    <EditMemberDialog
+      profileId={profileId}
+      fullName={fullName}
+      email={email}
+      role={role}
+      isSelf={isSelf}
+    />
+  );
+
   if (isSelf) {
-    return <span className="text-[12px] text-ink-faint">That&apos;s you</span>;
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-[12px] text-ink-faint">That&apos;s you</span>
+        {edit}
+      </div>
+    );
   }
 
   if (confirming) {
@@ -67,6 +89,7 @@ export function MemberActions({
 
   return (
     <div className="flex items-center justify-end gap-2">
+      {edit}
       <Button
         type="button"
         variant="outline"
