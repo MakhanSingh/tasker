@@ -23,8 +23,14 @@ export async function inviteUser(params: {
 }) {
   const admin = createAdminClient();
 
+  // Straight to /auth/callback, the same place a password reset lands. The
+  // invite link carries a one-time code that only the callback exchanges for a
+  // session, and that session is what lets /reset-password set a first
+  // password. Pointing this at /login instead — as it did — dropped people on
+  // a form asking for a password nobody had ever given them, with the code
+  // unspent in the URL behind them.
   const { data: created, error: createError } = await admin.auth.admin.inviteUserByEmail(params.email, {
-    redirectTo: `${await getAppUrl()}/login`,
+    redirectTo: `${await getAppUrl()}/auth/callback?next=/reset-password`,
   });
 
   if (createError || !created.user) {
