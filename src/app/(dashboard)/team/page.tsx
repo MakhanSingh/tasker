@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { AddTeamMemberDialog } from "@/components/team/AddTeamMemberDialog";
 import { InviteTeamMemberDialog } from "@/components/team/InviteTeamMemberDialog";
 import { MemberActions } from "@/components/team/MemberActions";
 
@@ -18,7 +19,13 @@ export default async function TeamPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-ink">Team</h1>
-        <InviteTeamMemberDialog />
+        {/* Invite stays the solid button: letting someone set their own
+            password is the better habit. Add user is the outline one beside
+            it, for when the mail won't arrive or won't arrive in time. */}
+        <div className="flex items-center gap-2">
+          <AddTeamMemberDialog />
+          <InviteTeamMemberDialog />
+        </div>
       </div>
 
       <Card>
